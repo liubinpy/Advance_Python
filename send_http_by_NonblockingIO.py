@@ -1,8 +1,3 @@
-""" 
-@author: Frank
-@file: send_http_by_socket.py 
-@time: 18-4-21 上午11:30 
-"""
 import socket
 from urllib.parse import urlparse
 
@@ -17,17 +12,28 @@ def get_url(url):
 
     #建立socket连接
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # client.setblocking(False)
-    client.connect((host, 80)) #阻塞不会消耗cpu
+    # 设置非阻塞
+    client.setblocking(False)
+    try:
+        client.connect((host, 80))
+    except OSError:
+        pass
 
     #不停的询问连接是否建立好， 需要while循环不停的去检查状态
     #做计算任务或者再次发起其他的连接请求
-
-    client.send("GET {} HTTP/1.1\r\nHost:{}\r\nConnection:close\r\n\r\n".format(path, host).encode("utf8"))
+    while True:
+        try:
+             client.send("GET {} HTTP/1.1\r\nHost:{}\r\nConnection:close\r\n\r\n".format(path, host).encode("utf8"))
+             break
+        except OSError:
+            continue
 
     data = b""
     while True:
-        d = client.recv(1024)
+        try:
+            d = client.recv(1024)
+        except BlockingIOError:
+            continue
         if d:
             data += d
         else:
@@ -39,4 +45,9 @@ def get_url(url):
     client.close()
 
 if __name__ == "__main__":
-    get_url("http://www.baidu.com/")
+    import time
+    start_time = time.time()
+    for url in range(20):
+        url = "http://shop.projectsedu.com/goods/{}/".format(url)
+        get_url(url)
+    print("cost:",time.time() - start_time)
